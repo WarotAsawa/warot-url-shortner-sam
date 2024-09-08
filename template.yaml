@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  warot-url-short
+
+  Sample SAM Template for warot-url-short
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 3
+    MemorySize: 128
+
+    Tracing: Active
+  Api:
+    Domain:
+      DomainName: short.warot.dev
+      CertificateArn: arn:aws:acm:ap-southeast-1:638806779113:certificate/fe595b2f-f8e2-45d0-97c5-320f853b5928
+      Route53:
+        HostedZoneId: Z06170111LCZF339GRX97
+
+    TracingEnabled: true
+Resources:
+  ShortURLFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: short_url/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            "warot-short-url-table"
+      Architectures:
+      - x86_64
+      Events:
+        ShortURL:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /{url}
+            Method: get
+
+  ApplicationResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name:
+        Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
+      ResourceQuery:
+        Type: CLOUDFORMATION_STACK_1_0
+  ApplicationInsightsMonitoring:
+    Type: AWS::ApplicationInsights::Application
+    Properties:
+      ResourceGroupName:
+        Ref: ApplicationResourceGroup
+      AutoConfigurationEnabled: 'true'
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  ShortURLApi:
+    Description: API Gateway endpoint URL for default stage for Hello World function
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/"
+  ShortURLFunction:
+    Description: Hello World Lambda Function ARN
+    Value: !GetAtt ShortURLFunction.Arn
+  ShortURLFunctionIamRole:
+    Description: Implicit IAM Role created for Hello World function
+    Value: !GetAtt ShortURLFunctionRole.Arn
